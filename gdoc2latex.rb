@@ -1,10 +1,12 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
+require 'date'
 require 'gdata'
 require 'gdoc.rb'
 require 'base64'
 require 'pp'
+require 'highline/import'
 
   DOCLIST_SCOPE = 'http://docs.google.com/feeds/'
   DOCLIST_DOWNLOD_SCOPE = 'http://docs.googleusercontent.com/'
@@ -56,26 +58,54 @@ def create_doc(entry)
     end
 end
 
-#some hacks to get the perl libs included in html2latex to be imported
-path_to_html2latex = '/Users/bcochran/dev/gdocs/html2latex-1.1/'
-output = `echo $PERL5LIB`
-if output.scan(/#{path_to_html2latex}/).length == 0
-    system("export PERL5LIB=$PERL5LIB:#{path_to_html2latex}")
+system("export PERL5LIB='#{File.dirname(__FILE__)}/html2latex-1.1/")
+
+if ARGV.length != 3
+  puts "Usage: gdoc2ruby.rb <target_directory> <template> <google_login>"
+  exit 0
+end 
+
+filename_base = ARGV[0]
+template_name = ARGV[1]
+google_login = ARGV[2]
+
+system("mkdir #{filename_base}")
+system("cp templates/#{template_name}/* #{filename_base}/.")
+Dir.chdir "#{filename_base}"
+
+password = ask("\nEnter Google Password: ") { |q| q.echo = false }
+
+client = GData::Client::DocList.new
+client.clientlogin(google_login, password)
+
+feed = client.get('https://docs.google.com/feeds/documents/private/full').to_xml
+
+counter = 1
+docs = Hash.new
+feed.elements.each('entry') do |entry|
+  docs[counter] = entry
+  counter = counter + 1
+  
+  if counter > 10
+    break
+  end
 end
 
-filename_base = "gdoc"
-client = GData::Client::DocList.new
-client.clientlogin('your_email@gmail.com', 'secret')
+puts "10 Most Recent Documents"
+puts "------------------------"
+docs.each { |id, entry| puts "#{id} : #{entry.elements['title'].text}" }
 
-feed = client.get('http://docs.google.com/feeds/documents/private/full').to_xml
+print "\nChoose a document id: "
+picked_id = STDIN.gets.chomp
 
 doc_id = nil
-feed.elements.each('entry') do |entry|
+docs.each do |id, entry|
+  #puts id
+  #puts entry
   title = entry.elements['title'].text
   #set query title to the title of your document
-  if title == 'Query Title'
+  if picked_id.to_s == id.to_s
     @document = create_doc(entry)
-    pp @document
     puts 'title: ' + title
     type = entry.elements['category'].attribute('label').value
     puts 'type: ' + type
@@ -87,40 +117,69 @@ feed.elements.each('entry') do |entry|
     puts 'doc_id: ' + doc_id
     export_url = @document
     puts 'export_url: ' + @document
-
+    export_url = export_url.sub(/http/, "https")
+    export_url = export_url.sub(/docID=/, "id=")
     resp = client.get(export_url)
 
     html_string = resp.body.scan(/<body.*<\/body>/m)[0]
     html_string = html_string.sub(/<body.*-->(\r\n)*/m, "<html><body>")
+    html_string = html_string.gsub(/&nbsp;/m, "~~")
+    html_string = html_string.gsub(/&ldquo;/m, "&quot;")
+    html_string = html_string.gsub(/&rdquo;/m, "&quot;")
+    html_string = html_string.gsub(/&lsquo;/m, "&#39;")
+    html_string = html_string.gsub(/&rsquo;/m, "&#39;")
     html_string = html_string.sub(/(<br>\s*)*<\/body>/m, "</body></html>")
-    images = html_string.scan(/([\d\w_]*\.png)/m)
-    images += html_string.scan(/([\d\w_]*\.jpg)/m)
-
+   
+    image_blocks = html_string.scan(/src="(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?"/)
+    counter = 0;
+    image_blocks.each do |image_b|
+      url = image_b[0] + "://" + image_b[2]
+      url_mod = url.gsub(/\%7B/m, "{")
+      url_mod = url_mod.gsub(/\%7D/m, "}")
+      url_mod = url_mod.gsub(/&amp;/m, "&")
+      extension = ".png"
+      filename = counter.to_s + extension
+      counter += 1
+      system "wget --no-check-certificate \"#{url_mod}\" -O #{filename}"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+      html_string = html_string.gsub(/#{url}/, "#{filename}")
+    end 
+    
     html_string = html_string.sub(/^\s*$/m, "")
-    file = File.new("gdoc.html", "w")
+    file = File.new("#{filename_base}.html", "w")
         file.puts html_string
     file.close
 
-    images.each do |image|
-        image_base = image.to_s.sub(/\.(png|jpg)/,'')
-        system "wget http://docs.google.com/File?id=#{image_base} -O #{image}"
-    end
+    system "perl ../html2latex-1.1/html2latex #{filename_base}.html"
 
-    system 'perl html2latex-1.1/html2latex gdoc.html'
-
+    template_filename = "template.tex"
     texfilename = filename_base + ".tex"
 
+    template = File.new(template_filename,'r').read
     texfile = File.new(texfilename,'r').read.gsub(/^\s*\\\\\s*$/,'')
+    
     #make further modifications to texfile
-    texfile = texfile.gsub(/\\includegraphics\[scale=1\]/, "\\includegraphics[scale=0.6]")
-    File.open(texfilename,'w') {|fw| fw.write(texfile)}
 
-    system 'pdflatex gdoc.tex'
-    system 'pdflatex gdoc.tex'
+    texfile = texfile.gsub(/\\includegraphics\[scale=1\]/, "\\includegraphics[scale=0.6]")
+    texfile = texfile.gsub(/ /, " ")
+    texfile = texfile.gsub(/~~/, "")
+    texfile = texfile.gsub(/\$\\backslash\$/, '\\')
+    texfile = texfile.gsub(/\\\{/, '{')
+    texfile = texfile.gsub(/\\\}/, '}')
+    texfile = texfile.gsub(/\n\n/m, "")
+    
+    #capture everything between \begin{document} and \end{document}
+    #then substitute that match for the <yield> in the template
+    
+    texfile_content = texfile.scan(/\\begin\{document\}(.*)\\end\{document\}/m)[0]
+    
+    template = template.gsub(/<yield>/, texfile_content[0])
+    
+    File.open(texfilename,'w') {|fw| fw.write(template)}
+    
+    system "pdflatex #{filename_base}.tex"
+    system "pdflatex #{filename_base}.tex"
     
   end
 end
-
-
-
 

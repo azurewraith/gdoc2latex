@@ -1,0 +1,65 @@
+h2. gdoc2latex.rb
+
+A simple script that utilizes the GDocs API and converts GDoc content into LaTeX markup and generates a PDF
+
+h2. Motivation
+
+For collaborative editing, nothing beats the power of Google Docs.  After the document is written, however, creating a hard copy of a Google document leaves a bit to be desired.  For output formatting, nothing beats the power of LaTeX.  
+
+This is my attempt at automating some of the process of taking a Google document after a content freeze and creating a PDF using LaTeX.  I am aware of other projects with roughly the same end goal, such as latex-lab, but I feel that editing in LaTeX markup has a high learning curve for collaborative editing purposes and that really all of that precise formatting and such should be done towards the end of content creation anyway.
+
+h2. Prerequisites
+
+* pdflatex
+* highline gem
+* gdata gem
+
+h2. Usage
+
+<pre>./gdoc2latex.rb <directory_target> <template_directory> <google_login></pre>
+
+Output TeX file: @directory_target/directory_target.tex@
+Output PDF file: @directory_target/directory_target.pdf@
+
+h2. Templates
+
+There are two basic templates included:
+
+* templates/basic - bare bones LaTeX template using helvetica font
+* templates/acm - a somewhat recent copy of the ACM proceedings LaTeX template
+
+h2. Caveats
+
+While convenient, the LaTeX markup generated at the end still needs to be tweaked a bit to account for precise adjustment of images, etc.  This is especially true when using the ACM proceedings template.  Formulas in Google Docs are converted to images and are saved locally but for some reason their URL's are not substituted as designed so they do not show up in the final TeX markup.  For now, I'll just add the formulas back in manually, and root cause the issue later.
+
+As time goes on, the automation will improve.
+
+h2. Example
+
+<pre>
+	[bcochran@wraith gdoc2latex]$ ./gdoc2latex.rb mobile_computing acm google_login@gmail.com
+
+	Enter Google Password: ********
+	10 Most Recent Documents
+	------------------------
+	5 : Distributed Systems Notes
+	6 : Mobile Computing Project Paper
+	1 : CommNet Final Project Paper
+	7 : ZigBee Research Paper
+	2 : Distributed Systems Term Project Scratchpad
+	8 : Distributed Systems Assignments
+	3 : Distributed Systems Term Project Paper
+	9 : CommNet - Homeworks
+	4 : Mobile Computing Critiques
+	10 : Distributed Systems Presentation Draft
+
+	Choose a document id: 6
+	title: Mobile Computing Project Paper
+	type: document
+	updated: 2011-04-09T18:07:30.322Z
+	...
+	...
+	...
+	Output written on mobile_computing.pdf (4 pages, 301431 bytes).
+	Transcript written on mobile_computing.log.
+</pre>
