@@ -14,6 +14,8 @@ h2. Prerequisites
 * highline gem
 * gdata gem
 
+* cpan HTML::TreeBuilder
+
 h2. Usage
 
 <pre>./gdoc2latex.rb <directory_target> <template_directory> <google_login></pre>

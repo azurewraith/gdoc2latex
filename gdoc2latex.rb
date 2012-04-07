@@ -162,11 +162,26 @@ docs.each do |id, entry|
 
     texfile = texfile.gsub(/\\includegraphics\[scale=1\]/, "\\includegraphics[scale=0.6]")
     texfile = texfile.gsub(/ /, " ")
+    texfile = texfile.gsub(/``/, "\"")
+    texfile = texfile.gsub(/''/, "\"")
     texfile = texfile.gsub(/~~/, "")
     texfile = texfile.gsub(/\$\\backslash\$/, '\\')
     texfile = texfile.gsub(/\\\{/, '{')
     texfile = texfile.gsub(/\\\}/, '}')
     texfile = texfile.gsub(/\n\n/m, "")
+    
+    #unescape inline formulas
+    texfile = texfile.gsub(/\\\$/, '$')
+    texfile = texfile.gsub(/\\\^/, '^')
+    texfile = texfile.gsub(/\\\_/, '_')
+    
+    #tempfix for protocol messages
+    texfile = texfile.gsub(/([A-Z])_([A-Z])/, '\1\_\2')
+    texfile = texfile.gsub(/\\begin\{lstlisting\}.*\\end\{lstlisting\}/, 'insert code!')
+
+    #figure reformatting
+    texfile = texfile.gsub(/Figure \{(.*)\}: (.*)/, '\begin{figure}[h] \centering \includegraphics[scale=0.6]{./0.png} \caption{\2} \label{\1} \end{figure}')
+
     
     #capture everything between \begin{document} and \end{document}
     #then substitute that match for the <yield> in the template
