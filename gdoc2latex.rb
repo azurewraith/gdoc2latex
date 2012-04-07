@@ -58,7 +58,7 @@ def create_doc(entry)
     end
 end
 
-system("export PERL5LIB='#{File.dirname(__FILE__)}/html2latex-1.1/")
+system("export PERL5LIB='$PERL5LIB;#{File.dirname(__FILE__)}/html2latex-1.1/'")
 
 if ARGV.length != 3
   puts "Usage: gdoc2ruby.rb <target_directory> <template> <google_login>"
