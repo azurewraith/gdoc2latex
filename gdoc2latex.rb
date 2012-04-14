@@ -140,8 +140,9 @@ docs.each do |id, entry|
       filename = counter.to_s + extension
       counter += 1
       system "wget --no-check-certificate \"#{url_mod}\" -O #{filename}"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-      html_string = html_string.gsub(/#{url}/, "#{filename}")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+      #html_string = html_string.gsub(/#{url.chomp}/m, "#{filename}")
+      html_string = html_string.sub(url, filename)
     end 
     
     html_string = html_string.sub(/^\s*$/m, "")
