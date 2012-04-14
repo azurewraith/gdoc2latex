@@ -40,6 +40,8 @@
 				% the word draft before you re-run
 				% Makediss for the last time.
 
+\pdfpageattr {/Group << /S /Transparency /I true /CS /DeviceRGB>>}
+
 \author{Benjamin Mark Cochran}  	% Required
 
 \address{8411 Bargamin Dr.\\ Austin, Texas 78736}  % Required
@@ -125,8 +127,8 @@
 % (remove the % in front of) the following two command lines (the ones
 % that have the \ as their second character).
 %
-\degree{MASTER OF SCIENCE}
-\degreeabbr{M.S.}
+\degree{Master of Science in Engineering}
+\degreeabbr{M.S.E.}
 
 % Uncomment the line below that corresponds to the type of master's
 % document you are writing.
@@ -145,19 +147,20 @@
 %\singlespacequote
 \oneandonehalfspacequote
 
-\topmargin 0.125in	% Adjust this value if the PostScript file output
-			% of your dissertation has incorrect top and 
-			% bottom margins. Print a copy of at least one
-			% full page of your dissertation (not the first
-			% page of a chapter) and measure the top and
-			% bottom margins with a ruler. You must have
-			% a top margin of 1.5" and a bottom margin of
-			% at least 1.25". The page numbers must be at
-			% least 1.00" from the bottom of the page.
-			% If the margins are not correct, adjust this
-			% value accordingly and re-compile and print again.
-			%
-			% The default value is 0.125"
+\topmargin 0.125in	
+        % Adjust this value if the PostScript file output
+		% of your dissertation has incorrect top and 
+		% bottom margins. Print a copy of at least one
+		% full page of your dissertation (not the first
+		% page of a chapter) and measure the top and
+		% bottom margins with a ruler. You must have
+		% a top margin of 1.5" and a bottom margin of
+		% at least 1.25". The page numbers must be at
+		% least 1.00" from the bottom of the page.
+		% If the margins are not correct, adjust this
+		% value accordingly and re-compile and print again.
+		%
+		% The default value is 0.125"
 
 		% If you want to adjust other margins, they are in the
 		% utdiss2-nn.sty file near the top. If you are using
@@ -176,7 +179,11 @@
 %
 %\longtocentry 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Don't put Chapter X: Blah			     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\renewcommand{\chaptername}{}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %	Some math support.					     %
@@ -247,14 +254,18 @@
 %	If you are writing a masters thesis or report, you MUST REVERSE
 %	the order of the \commcertpage and \titlepage commands below.
 %
-\commcertpage           % Produces the Committee Certification
-			%   of Approved Version page (doctoral)
-			%   or Signature page (masters).
-			%		20 Mar 2002	cwm
 
 \titlepage              % Produces the title page.
 
+\begin{center}
+The Report committee for Benjamin Mark Cochran \linebreak
+Certifies that this is the approved version of the following report:
+\end{center}
 
+\commcertpage           % Produces the Committee Certification
+						%   of Approved Version page (doctoral)
+						%   or Signature page (masters).
+						%		20 Mar 2002	cwm
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dedication and/or epigraph are optional, but must occur here.      %

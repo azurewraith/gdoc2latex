@@ -7,6 +7,7 @@ require 'gdoc.rb'
 require 'base64'
 require 'pp'
 require 'highline/import'
+require 'pandoc-ruby'
 
   DOCLIST_SCOPE = 'http://docs.google.com/feeds/'
   DOCLIST_DOWNLOD_SCOPE = 'http://docs.googleusercontent.com/'
@@ -57,8 +58,6 @@ def create_doc(entry)
             doc.links['export'] = doc.links['content_src']
     end
 end
-
-system("export PERL5LIB='$PERL5LIB;#{File.dirname(__FILE__)}/html2latex-1.1/'")
 
 if ARGV.length != 3
   puts "Usage: gdoc2ruby.rb <target_directory> <template> <google_login>"
@@ -123,7 +122,7 @@ docs.each do |id, entry|
 
     html_string = resp.body.scan(/<body.*<\/body>/m)[0]
     html_string = html_string.sub(/<body.*-->(\r\n)*/m, "<html><body>")
-    html_string = html_string.gsub(/&nbsp;/m, "~~")
+    #html_string = html_string.gsub(/&nbsp;/m, "~~")
     html_string = html_string.gsub(/&ldquo;/m, "&quot;")
     html_string = html_string.gsub(/&rdquo;/m, "&quot;")
     html_string = html_string.gsub(/&lsquo;/m, "&#39;")
@@ -147,48 +146,61 @@ docs.each do |id, entry|
     
     html_string = html_string.sub(/^\s*$/m, "")
     file = File.new("#{filename_base}.html", "w")
-        file.puts html_string
+    file.write html_string
     file.close
 
-    system "perl ../html2latex-1.1/html2latex #{filename_base}.html"
+    PandocRuby.allow_file_paths = true
+    latex = PandocRuby.html("./#{filename_base}.html").to_latex
+    latex_file = File.new("#{filename_base}.tex", "w")
+    latex_file.write(latex)
+    latex_file.close
 
     template_filename = "template.tex"
     texfilename = filename_base + ".tex"
 
     template = File.new(template_filename,'r').read
-    texfile = File.new(texfilename,'r').read.gsub(/^\s*\\\\\s*$/,'')
+    texfile = File.new(texfilename,'r').read
     
     #make further modifications to texfile
 
-    texfile = texfile.gsub(/\\includegraphics\[scale=1\]/, "\\includegraphics[scale=0.6]")
-    texfile = texfile.gsub(/ /, " ")
-    texfile = texfile.gsub(/``/, "\"")
-    texfile = texfile.gsub(/''/, "\"")
-    texfile = texfile.gsub(/~~/, "")
-    texfile = texfile.gsub(/\$\\backslash\$/, '\\')
+    texfile = texfile.gsub(/\\includegraphics/, "\\includegraphics[scale=0.6]")
+    #texfile = texfile.gsub(/ /, " ")
+    #texfile = texfile.gsub(/``/, "\"")
+    #texfile = texfile.gsub(/''/, "\"")
+    texfile = texfile.gsub(/\\textbackslash\{\}/, '\\')
     texfile = texfile.gsub(/\\\{/, '{')
     texfile = texfile.gsub(/\\\}/, '}')
-    texfile = texfile.gsub(/\n\n/m, "")
+    texfile = texfile.gsub(/\\textasciitilde\{\}/m, "")
+
+    # remove comments
+    texfile = texfile.gsub(/\\href.*\}/, "")
+    texfile = texfile.gsub(/\\textsuperscript\{/, "}")
+
+    # if utdiss2 template, promote sections to chapters
+    if (template_name == "utdiss2")
+      texfile = texfile.gsub(/\\section/, "\\chapter")
+      texfile = texfile.gsub(/\\(.*)subsection/) do
+        "\\#{$1}section"
+      end
+    end
     
     #unescape inline formulas
-    texfile = texfile.gsub(/\\\$/, '$')
-    texfile = texfile.gsub(/\\\^/, '^')
-    texfile = texfile.gsub(/\\\_/, '_')
+    #texfile = texfile.gsub(/\\\$/, '$')
+    #texfile = texfile.gsub(/\\\^/, '^')
+    #texfile = texfile.gsub(/\\\_/, '_')
     
     #tempfix for protocol messages
-    texfile = texfile.gsub(/([A-Z])_([A-Z])/, '\1\_\2')
-    texfile = texfile.gsub(/\\begin\{lstlisting\}.*\\end\{lstlisting\}/, 'insert code!')
+    #texfile = texfile.gsub(/([A-Z])_([A-Z])/, '\1\_\2')
+    #texfile = texfile.gsub(/\\begin\{lstlisting\}.*\\end\{lstlisting\}/, 'insert code!')
 
     #figure reformatting
-    texfile = texfile.gsub(/Figure \{(.*)\}: (.*)/, '\begin{figure}[h] \centering \includegraphics[scale=0.6]{./0.png} \caption{\2} \label{\1} \end{figure}')
+    #texfile = texfile.gsub(/Figure \{(.*)\}: (.*)/) do
+    #  "\\begin{figure}[h]\n\\centering\n\\includegraphics[scale=0.6]{./0.png}\n\\caption{#{$2}}\n\\label{#{$1}}\n\\end{figure}"
+    #end
 
+    #substitute file content for the <yield> in the template
     
-    #capture everything between \begin{document} and \end{document}
-    #then substitute that match for the <yield> in the template
-    
-    texfile_content = texfile.scan(/\\begin\{document\}(.*)\\end\{document\}/m)[0]
-    
-    template = template.gsub(/<yield>/, texfile_content[0])
+    template = template.gsub(/<yield>/, texfile)
     
     File.open(texfilename,'w') {|fw| fw.write(template)}
     
