@@ -25,16 +25,21 @@ Output PDF file: @directory_target/directory_target.pdf@
 
 h2. Templates
 
-There are two basic templates included:
+There are three basic templates included:
 
 * templates/basic - bare bones LaTeX template using helvetica font
 * templates/acm - a somewhat recent copy of the ACM proceedings LaTeX template
+* templates/utdiss2 - UT's Dissertation/Thesis LaTeX template
 
 h2. Caveats
 
 While convenient, the LaTeX markup generated at the end still needs to be tweaked a bit to account for precise adjustment of images, etc.  This is especially true when using the ACM proceedings template.
 
 As time goes on, the automation will improve.
+
+h2. Known Issues
+
+* Formulas that are natively transformed into LaTeX sometimes have extra "+" signs
 
 h2. Example
 

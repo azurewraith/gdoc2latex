@@ -6,23 +6,25 @@ require 'gdata'
 require 'gdoc.rb'
 require 'base64'
 require 'pp'
+require 'uri'
+require 'nokogiri'
 require 'highline/import'
 require 'pandoc-ruby'
 
-  DOCLIST_SCOPE = 'http://docs.google.com/feeds/'
-  DOCLIST_DOWNLOD_SCOPE = 'http://docs.googleusercontent.com/'
-  CONTACTS_SCOPE = 'http://www.google.com/m8/feeds/'
-  SPREADSHEETS_SCOPE = 'http://spreadsheets.google.com/feeds/'
-  DOCLIST_FEED = DOCLIST_SCOPE + 'default/private/full'
-  DOCUMENT_DOC_TYPE = 'document'
-  FOLDER_DOC_TYPE = 'folder'
-  PRESO_DOC_TYPE = 'presentation'
-  PDF_DOC_TYPE = 'pdf'
-  SPREADSHEET_DOC_TYPE = 'spreadsheet'
-  MINE_LABEL = 'mine'
-  STARRED_LABEL = 'starred'
-  TRASHED_LABEL = 'trashed'
-  MAX_CONTACTS_RESULTS = 500
+DOCLIST_SCOPE = 'http://docs.google.com/feeds/'
+DOCLIST_DOWNLOD_SCOPE = 'http://docs.googleusercontent.com/'
+CONTACTS_SCOPE = 'http://www.google.com/m8/feeds/'
+SPREADSHEETS_SCOPE = 'http://spreadsheets.google.com/feeds/'
+DOCLIST_FEED = DOCLIST_SCOPE + 'default/private/full'
+DOCUMENT_DOC_TYPE = 'document'
+FOLDER_DOC_TYPE = 'folder'
+PRESO_DOC_TYPE = 'presentation'
+PDF_DOC_TYPE = 'pdf'
+SPREADSHEET_DOC_TYPE = 'spreadsheet'
+MINE_LABEL = 'mine'
+STARRED_LABEL = 'starred'
+TRASHED_LABEL = 'trashed'
+MAX_CONTACTS_RESULTS = 500
 
 def create_doc(entry)
     resource_id = entry.elements['gd:resourceId'].text.split(':')
@@ -60,7 +62,7 @@ def create_doc(entry)
 end
 
 if ARGV.length != 3
-  puts "Usage: gdoc2ruby.rb <target_directory> <template> <google_login>"
+  puts "Usage: gdoc2latex.rb <target_directory> <template> <google_login>"
   exit 0
 end 
 
@@ -92,6 +94,7 @@ end
 
 puts "10 Most Recent Documents"
 puts "------------------------"
+docs.sort_by {|id| id }
 docs.each { |id, entry| puts "#{id} : #{entry.elements['title'].text}" }
 
 print "\nChoose a document id: "
@@ -122,7 +125,6 @@ docs.each do |id, entry|
 
     html_string = resp.body.scan(/<body.*<\/body>/m)[0]
     html_string = html_string.sub(/<body.*-->(\r\n)*/m, "<html><body>")
-    #html_string = html_string.gsub(/&nbsp;/m, "~~")
     html_string = html_string.gsub(/&ldquo;/m, "&quot;")
     html_string = html_string.gsub(/&rdquo;/m, "&quot;")
     html_string = html_string.gsub(/&lsquo;/m, "&#39;")
@@ -131,6 +133,7 @@ docs.each do |id, entry|
    
     image_blocks = html_string.scan(/src="(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?"/)
     counter = 0;
+    latex_formulas = [];
     image_blocks.each do |image_b|
       url = image_b[0] + "://" + image_b[2]
       url_mod = url.gsub(/\%7B/m, "{")
@@ -138,12 +141,30 @@ docs.each do |id, entry|
       url_mod = url_mod.gsub(/&amp;/m, "&")
       extension = ".png"
       filename = counter.to_s + extension
-      counter += 1
-      system "wget --no-check-certificate \"#{url_mod}\" -O #{filename}"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
-      #html_string = html_string.gsub(/#{url.chomp}/m, "#{filename}")
-      html_string = html_string.sub(url, filename)
-    end 
+
+      # if LaTeX formula, unescape the chl= portion of the URL and replace as native LaTeX
+      if url.include? "chl="
+        latex_formulas << URI.unescape(url).scan(/chl=(.*)/).first.first
+        html_string = html_string.sub("<img src=\"#{url}\">", "$latex_formula_#{latex_formulas.count}$")
+      else
+        counter += 1
+        system "wget --no-check-certificate \"#{url_mod}\" -O #{filename}"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+        html_string = html_string.sub(url, filename)
+      end
+    end
+
+    # fix tables, remove all child elements from <td> tags like <p> and <span>
+    doc = Nokogiri::HTML(html_string)
+    tables = doc.search('table')
+    tables.each do |t|
+      t.search('td').each do |td|
+        content = td.content
+        td.children.remove
+        td.content = content
+      end
+    end
+    html_string = doc.to_html
+
     
     html_string = html_string.sub(/^\s*$/m, "")
     file = File.new("#{filename_base}.html", "w")
@@ -164,7 +185,12 @@ docs.each do |id, entry|
     
     #make further modifications to texfile
 
-    texfile = texfile.gsub(/\\includegraphics/, "\\includegraphics[scale=0.6]")
+    if (template_name == "acm")
+      # account for two column format, at least temporarily
+      texfile = texfile.gsub(/\\includegraphics/, "\\includegraphics[scale=0.2]")
+    else
+      texfile = texfile.gsub(/\\includegraphics/, "\\includegraphics[scale=0.6]")
+    end
     #texfile = texfile.gsub(/ /, " ")
     #texfile = texfile.gsub(/``/, "\"")
     #texfile = texfile.gsub(/''/, "\"")
@@ -172,6 +198,11 @@ docs.each do |id, entry|
     texfile = texfile.gsub(/\\\{/, '{')
     texfile = texfile.gsub(/\\\}/, '}')
     texfile = texfile.gsub(/\\textasciitilde\{\}/m, "")
+
+    # replace formulas
+    latex_formulas.each_with_index do |f, i|
+      texfile = texfile.gsub(/latex\\_formula\\_#{i+1}/, "#{f}")
+    end
 
     # remove comments
     texfile = texfile.gsub(/\\href.*\}/, "")
@@ -186,13 +217,18 @@ docs.each do |id, entry|
     end
     
     #unescape inline formulas
-    #texfile = texfile.gsub(/\\\$/, '$')
+    texfile = texfile.gsub(/\\\$/, '$')
+
+    # delete \\noalign{\medskip} replace with \NN
+    texfile = texfile.gsub(/\\\\noalign\{\\medskip\}/, "\\NN")
+
+    # change \ctable[pos = H, center, botcap]{ll}
+    # to \ctable[pos = h, center, caption=The Matrix]{lll}
+    texfile = texfile.gsub(/\[pos = H, center, botcap\]/, "[pos = h, center, botcap, caption=TempCaption]")
+
     #texfile = texfile.gsub(/\\\^/, '^')
+    #texfile = texfile.gsub(/\{\}/, '')
     #texfile = texfile.gsub(/\\\_/, '_')
-    
-    #tempfix for protocol messages
-    #texfile = texfile.gsub(/([A-Z])_([A-Z])/, '\1\_\2')
-    #texfile = texfile.gsub(/\\begin\{lstlisting\}.*\\end\{lstlisting\}/, 'insert code!')
 
     #figure reformatting
     #texfile = texfile.gsub(/Figure \{(.*)\}: (.*)/) do
