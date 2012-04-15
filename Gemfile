@@ -1,0 +1,5 @@
+source "http://rubygems.org"
+gem "nokogiri"
+gem "gdata", "1.1.2"
+gem "pandoc-ruby"
+gem "highline"

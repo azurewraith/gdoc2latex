@@ -1,11 +1,13 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
+require 'bundler/setup'
 require 'date'
 require 'gdata'
 require 'gdoc.rb'
 require 'base64'
 require 'pp'
+require 'open-uri'
 require 'uri'
 require 'nokogiri'
 require 'highline/import'
@@ -61,18 +63,52 @@ def create_doc(entry)
     end
 end
 
+# cross platform replacement for wget
+def save_file(url, file)
+  File.open(file, "wb") do |saved_file|
+    # the following "open" is provided by open-uri
+    open(url) do |read_file|
+      saved_file.write(read_file.read)
+    end
+  end
+end
+
+# Cross-platform way of finding an executable in the $PATH.
+#
+#   which('ruby') #=> /usr/bin/ruby
+def which(cmd)
+  exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
+  ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+    exts.each { |ext|
+      exe = "#{path}/#{cmd}#{ext}"
+      return exe if File.executable? exe
+    }
+  end
+  return nil
+end
+
 if ARGV.length != 3
   puts "Usage: gdoc2latex.rb <target_directory> <template> <google_login>"
   exit 0
 end 
 
+if which("pandoc").nil?
+  puts "gdoc2latex.rb requires the 'pandoc' executable, please install pandoc for your OS"
+  exit 0
+end
+
+if which("pdflatex").nil?
+  puts "gdoc2latex.rb requires the 'pdflatex' executable, please install TeX Live or equivalent for your OS"
+  exit 0
+end
+
 filename_base = ARGV[0]
 template_name = ARGV[1]
 google_login = ARGV[2]
 
-system("mkdir #{filename_base}")
-system("cp templates/#{template_name}/* #{filename_base}/.")
-Dir.chdir "#{filename_base}"
+Dir.mkdir filename_base
+FileUtils.cp_r Dir.glob("templates/#{template_name}/*"), "#{filename_base}/."
+Dir.chdir filename_base
 
 password = ask("\nEnter Google Password: ") { |q| q.echo = false }
 
@@ -148,7 +184,7 @@ docs.each do |id, entry|
         html_string = html_string.sub("<img src=\"#{url}\">", "$latex_formula_#{latex_formulas.count}$")
       else
         counter += 1
-        system "wget --no-check-certificate \"#{url_mod}\" -O #{filename}"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+        save_file(url_mod, filename)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
         html_string = html_string.sub(url, filename)
       end
     end
