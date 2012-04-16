@@ -10,13 +10,13 @@ This is my attempt at automating some of the process of taking a Google document
 
 h2. Prerequisites
 
+* bundler
 * pdflatex
 * pandoc
-* highline gem
-* gdata gem
-* wget
 
 h2. Usage
+
+<pre>bundle install</pre>
 
 <pre>./gdoc2latex.rb <directory_target> <template_directory> <google_login></pre>
 
