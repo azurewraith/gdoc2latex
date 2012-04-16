@@ -65,6 +65,7 @@ end
 
 # cross platform replacement for wget
 def save_file(url, file)
+  puts "Downloading http://...#{url[-8..-1]} -> #{file}"
   File.open(file, "wb") do |saved_file|
     # the following "open" is provided by open-uri
     open(url) do |read_file|
@@ -261,6 +262,9 @@ docs.each do |id, entry|
     # change \ctable[pos = H, center, botcap]{ll}
     # to \ctable[pos = h, center, caption=The Matrix]{lll}
     texfile = texfile.gsub(/\[pos = H, center, botcap\]/, "[pos = h, center, botcap, caption=TempCaption]")
+
+    # keep figures from taking up their own page
+    texfile = texfile.gsub(/\\begin\{figure\}\[htbp\]/, "\\begin{figure}[h!]")
 
     #texfile = texfile.gsub(/\\\^/, '^')
     #texfile = texfile.gsub(/\{\}/, '')
