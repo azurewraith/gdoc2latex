@@ -4,7 +4,7 @@ require 'rubygems'
 require 'bundler/setup'
 require 'date'
 require 'gdata'
-require 'gdoc.rb'
+require './gdoc.rb'
 require 'base64'
 require 'pp'
 require 'open-uri'
@@ -27,6 +27,8 @@ MINE_LABEL = 'mine'
 STARRED_LABEL = 'starred'
 TRASHED_LABEL = 'trashed'
 MAX_CONTACTS_RESULTS = 500
+
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 
 def create_doc(entry)
     resource_id = entry.elements['gd:resourceId'].text.split(':')
